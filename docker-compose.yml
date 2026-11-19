@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "7777:8000"
+    volumes:
+      - keitaro_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  keitaro_data:

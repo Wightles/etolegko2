@@ -50,7 +50,13 @@ async function submit(event) {
   submitButton.disabled = true; submitButton.querySelector('.button-label').hidden = true; submitButton.querySelector('.button-loader').hidden = false;
   try {
     const response = await fetch('/api/campaigns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Keitaro не принял запрос'); state.lastResult = data;
+    if (!response.ok) {
+      const details = data.errors
+        ? `: ${typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors)}`
+        : '';
+      throw new Error(`${data.detail || 'Keitaro не принял запрос'}${details}`);
+    }
+    state.lastResult = data;
     document.querySelector('#success-title').textContent = data.campaign.name || body.name; document.querySelector('#success-description').textContent = `Создано 2 потока. ID кампании: ${data.campaign.id || '—'}.`; document.querySelector('#success-card').hidden = false; document.querySelector('#success-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (error) { setError(error.message); } finally { submitButton.disabled = false; submitButton.querySelector('.button-label').hidden = false; submitButton.querySelector('.button-loader').hidden = true; }
 }

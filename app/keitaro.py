@@ -129,7 +129,7 @@ class KeitaroClient:
             "name": f"GEO {data.geo_code} → Google",
             "position": 1,
             "state": "active",
-            "action_type": "redirect",
+            "action_type": "http",
             "action_payload": data.google_url,
             "collect_clicks": True,
             "filters": [
@@ -147,7 +147,7 @@ class KeitaroClient:
             "name": f"Offer {data.offer_id}",
             "position": 2,
             "state": "active",
-            "action_type": "redirect",
+            "action_type": "http",
             "collect_clicks": True,
             "offers": [{"offer_id": data.offer_id, "share": 100, "state": "active"}],
         }
