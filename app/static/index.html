@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Keitaro · Новая кампания</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">KEITARO WRAPPER · ЭТАП 1</p>
+          <h1>Создать кампанию</h1>
+          <p class="subtitle">Настрой кампанию и два потока в одном действии.</p>
+        </div>
+        <div class="status-pill" id="connection-status"><span class="status-dot"></span>Проверяем API…</div>
+      </header>
+
+      <section class="layout">
+        <form class="card form-card" id="campaign-form">
+          <div class="card-heading">
+            <div><p class="section-kicker">КОНФИГУРАЦИЯ</p><h2>Новая кампания</h2></div>
+            <span class="step-badge">01</span>
+          </div>
+
+          <label class="field">
+            <span>Название кампании</span>
+            <input name="name" required minlength="2" maxlength="255" placeholder="Например, MX beauty test" />
+          </label>
+
+          <div class="form-row">
+            <label class="field">
+              <span>GEO-код страны</span>
+              <input name="geo_code" required minlength="2" maxlength="8" placeholder="MX" autocomplete="off" />
+              <small>ISO 3166-1 alpha-2, например AU или MX</small>
+            </label>
+            <label class="field">
+              <span>ID оффера</span>
+              <input name="offer_id" required type="number" min="1" step="1" placeholder="3749" />
+              <small>Можно выбрать из списка ниже</small>
+            </label>
+          </div>
+
+          <div class="field autocomplete-wrap">
+            <span>Оффер в Keitaro</span>
+            <input id="offer-search" placeholder="Поиск по ID или названию" autocomplete="off" />
+            <div class="suggestions" id="offer-suggestions" hidden></div>
+          </div>
+
+          <div class="divider"><span>Настройки кампании</span></div>
+
+          <div class="form-row three">
+            <label class="field"><span>Домен</span><select name="domain_id" id="domain-select" required><option value="">Загрузка…</option></select></label>
+            <label class="field"><span>Группа</span><select name="group_id" id="group-select" required><option value="">Загрузка…</option></select></label>
+            <label class="field"><span>Источник</span><select name="traffic_source_id" id="source-select" required><option value="">Загрузка…</option></select></label>
+          </div>
+
+          <label class="field"><span>Белая страница для GEO-потока</span><input name="google_url" type="url" value="https://www.google.com" required /></label>
+
+          <div class="info-note"><span class="note-icon">i</span><p>Для выбранного GEO создастся поток с редиректом на Google. Остальной трафик попадёт в default-поток на оффер.</p></div>
+          <button class="primary-button" type="submit" id="submit-button"><span class="button-label">Создать кампанию</span><span class="button-loader" hidden></span></button>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+        </form>
+
+        <aside class="card preview-card">
+          <div class="card-heading"><div><p class="section-kicker">ПРЕДПРОСМОТР</p><h2>Структура кампании</h2></div><span class="live-badge">LIVE</span></div>
+          <div class="campaign-preview"><div class="preview-line"><span class="line-label">Кампания</span><strong id="preview-name">Без названия</strong></div><div class="preview-line"><span class="line-label">GEO</span><strong id="preview-geo">—</strong></div></div>
+          <div class="flow-list">
+            <div class="flow-item google-flow"><div class="flow-icon">↗</div><div class="flow-content"><div class="flow-title">GEO-поток <span>01</span></div><p>Выбранная страна → Google</p><code>filter: geo = <b id="preview-filter">—</b></code></div></div>
+            <div class="flow-connector"></div>
+            <div class="flow-item offer-flow"><div class="flow-icon">↘</div><div class="flow-content"><div class="flow-title">Default-поток <span>02</span></div><p>Остальной трафик → оффер</p><code>offer_id: <b id="preview-offer">—</b></code></div></div>
+          </div>
+          <div class="preview-footer"><span class="status-dot green"></span>Готово к созданию</div>
+        </aside>
+      </section>
+
+      <section class="success-card" id="success-card" hidden>
+        <div class="success-icon">✓</div>
+        <div><p class="section-kicker">КАМПАНИЯ СОЗДАНА</p><h2 id="success-title">Готово</h2><p id="success-description"></p></div>
+        <button class="secondary-button" id="copy-result" type="button">Скопировать JSON</button>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
