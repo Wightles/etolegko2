@@ -10,7 +10,7 @@
     <main class="shell">
       <header class="hero">
         <div>
-          <p class="eyebrow">KEITARO WRAPPER · ЭТАП 1</p>
+          <p class="eyebrow">KEITARO WRAPPER · ЭТАПЫ 1–2</p>
           <h1>Создать кампанию</h1>
           <p class="subtitle">Настрой кампанию и два потока в одном действии.</p>
         </div>
@@ -67,12 +67,48 @@
           <div class="card-heading"><div><p class="section-kicker">ПРЕДПРОСМОТР</p><h2>Структура кампании</h2></div><span class="live-badge">LIVE</span></div>
           <div class="campaign-preview"><div class="preview-line"><span class="line-label">Кампания</span><strong id="preview-name">Без названия</strong></div><div class="preview-line"><span class="line-label">GEO</span><strong id="preview-geo">—</strong></div></div>
           <div class="flow-list">
-            <div class="flow-item google-flow"><div class="flow-icon">↗</div><div class="flow-content"><div class="flow-title">GEO-поток <span>01</span></div><p>Выбранная страна → Google</p><code>filter: geo = <b id="preview-filter">—</b></code></div></div>
+            <div class="flow-item google-flow"><div class="flow-icon">↗</div><div class="flow-content"><div class="flow-title">GEO-поток <span>01</span></div><p>Выбранная страна → Google</p><code>filter: country = <b id="preview-filter">—</b></code></div></div>
             <div class="flow-connector"></div>
             <div class="flow-item offer-flow"><div class="flow-icon">↘</div><div class="flow-content"><div class="flow-title">Default-поток <span>02</span></div><p>Остальной трафик → оффер</p><code>offer_id: <b id="preview-offer">—</b></code></div></div>
           </div>
           <div class="preview-footer"><span class="status-dot green"></span>Готово к созданию</div>
         </aside>
+      </section>
+
+      <section class="editor-section" id="stream-editor">
+        <div class="editor-heading">
+          <div>
+            <p class="section-kicker">ЭТАП 2 · ЛОКАЛЬНЫЙ ЧЕРНОВИК</p>
+            <h2>Редактор потоков и офферов</h2>
+            <p class="subtitle">Изменения попадут в Keitaro только после Push to KT.</p>
+          </div>
+          <span class="live-badge">DRAFT FIRST</span>
+        </div>
+
+        <div class="editor-toolbar">
+          <label class="editor-campaign-field">
+            <span>Кампания Keitaro</span>
+            <select id="editor-campaign-select"><option value="">Загрузка кампаний…</option></select>
+          </label>
+          <label class="editor-campaign-id">
+            <span>ID кампании</span>
+            <input id="editor-campaign-id" type="number" min="1" placeholder="215496" />
+          </label>
+          <button class="secondary-button editor-fetch-button" id="editor-fetch" type="button">Fetch Streams from KT</button>
+        </div>
+
+        <div class="editor-add-row">
+          <label class="editor-offer-search">
+            <span>Оффер для добавления</span>
+            <input id="editor-offer-search" placeholder="Поиск по ID или названию" autocomplete="off" />
+            <div class="suggestions editor-suggestions" id="editor-offer-suggestions" hidden></div>
+          </label>
+          <span class="editor-selected-offer" id="editor-selected-offer">Оффер не выбран</span>
+        </div>
+        <p class="editor-message" id="editor-message" role="alert" hidden></p>
+        <div class="streams-list" id="streams-list">
+          <div class="empty-editor">Выбери кампанию и нажми Fetch Streams from KT.</div>
+        </div>
       </section>
 
       <section class="success-card" id="success-card" hidden>

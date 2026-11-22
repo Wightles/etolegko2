@@ -3,8 +3,9 @@
 Revision ID: 0001_creation_log
 Revises:
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0001_creation_log"
 down_revision = None

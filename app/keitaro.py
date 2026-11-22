@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from copy import deepcopy
 from typing import Any
 
 import httpx
@@ -81,6 +82,60 @@ class KeitaroClient:
             "traffic_sources": self._as_list(traffic_sources),
         }
 
+    async def list_campaigns(self) -> list[dict[str, Any]]:
+        return self._as_list(await self._request("GET", "/campaigns"))
+
+    async def list_offers(self) -> list[dict[str, Any]]:
+        return self._as_list(await self._request("GET", "/offers"))
+
+    async def get_campaign(self, campaign_id: int) -> dict[str, Any]:
+        payload = await self._request("GET", f"/campaigns/{campaign_id}")
+        if not isinstance(payload, dict):
+            raise KeitaroApiError(502, "Keitaro вернул некорректные данные кампании", payload)
+        return payload
+
+    async def get_campaign_streams(self, campaign_id: int) -> list[dict[str, Any]]:
+        return self._as_list(await self._request("GET", f"/campaigns/{campaign_id}/streams"))
+
+    async def get_stream(self, stream_id: int) -> dict[str, Any]:
+        payload = await self._request("GET", f"/streams/{stream_id}")
+        if not isinstance(payload, dict):
+            raise KeitaroApiError(502, "Keitaro вернул некорректные данные потока", payload)
+        return payload
+
+    async def get_offer(self, offer_id: int) -> dict[str, Any]:
+        payload = await self._request("GET", f"/offers/{offer_id}")
+        if not isinstance(payload, dict):
+            raise KeitaroApiError(502, "Keitaro вернул некорректные данные оффера", payload)
+        return payload
+
+    async def update_stream_offers(
+        self, stream: dict[str, Any], offers: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Replace only the offer bindings while preserving every other stream setting."""
+        allowed_fields = (
+            "campaign_id",
+            "type",
+            "name",
+            "position",
+            "weight",
+            "action_options",
+            "comments",
+            "state",
+            "action_type",
+            "action_payload",
+            "schema",
+            "collect_clicks",
+            "filter_or",
+            "filters",
+            "triggers",
+            "landings",
+            "offer_selection",
+        )
+        payload = {key: deepcopy(stream[key]) for key in allowed_fields if key in stream}
+        payload["offers"] = offers
+        return await self._request("PUT", f"/streams/{stream['id']}", json=payload)
+
     async def _gather_resources(self) -> tuple[Any, Any, Any, Any]:
         import asyncio
 
@@ -91,7 +146,9 @@ class KeitaroClient:
             self._request("GET", "/traffic_sources"),
         )
 
-    async def create_campaign(self, data: CreateCampaignRequest) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    async def create_campaign(
+        self, data: CreateCampaignRequest
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         campaign_payload = {
             "alias": self._make_alias(data.name),
             "name": data.name.strip(),

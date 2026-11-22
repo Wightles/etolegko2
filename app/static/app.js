@@ -1,4 +1,4 @@
-const state = { offers: [], lastResult: null };
+const state = { offers: [], lastResult: null, editor: { campaign: null, selectedOffer: null } };
 const form = document.querySelector('#campaign-form');
 const offerIdInput = form.elements.offer_id;
 const offerSearch = document.querySelector('#offer-search');
@@ -62,4 +62,179 @@ async function submit(event) {
 }
 form.addEventListener('input', updatePreview); form.addEventListener('submit', submit); offerSearch.addEventListener('focus', showSuggestions); offerSearch.addEventListener('input', showSuggestions); document.addEventListener('click', (event) => { if (!event.target.closest('.autocomplete-wrap')) suggestions.hidden = true; });
 document.querySelector('#copy-result').addEventListener('click', async () => { if (!state.lastResult) return; await navigator.clipboard.writeText(JSON.stringify(state.lastResult, null, 2)); document.querySelector('#copy-result').textContent = 'Скопировано'; setTimeout(() => { document.querySelector('#copy-result').textContent = 'Скопировать JSON'; }, 1400); });
-updatePreview(); loadLookups();
+
+const editorCampaignSelect = document.querySelector('#editor-campaign-select');
+const editorCampaignId = document.querySelector('#editor-campaign-id');
+const editorFetchButton = document.querySelector('#editor-fetch');
+const editorOfferSearch = document.querySelector('#editor-offer-search');
+const editorOfferSuggestions = document.querySelector('#editor-offer-suggestions');
+const editorSelectedOffer = document.querySelector('#editor-selected-offer');
+const editorMessage = document.querySelector('#editor-message');
+const streamsList = document.querySelector('#streams-list');
+
+function setEditorMessage(message, kind = 'error', action = null) {
+  editorMessage.innerHTML = '';
+  editorMessage.className = `editor-message${kind === 'success' ? ' success' : ''}`;
+  if (message) {
+    editorMessage.append(document.createTextNode(message));
+    if (action) {
+      const button = document.createElement('button');
+      button.className = 'small-button warn-small editor-conflict';
+      button.type = 'button'; button.textContent = action.label;
+      button.addEventListener('click', action.handler);
+      editorMessage.append(document.createElement('br'), button);
+    }
+    editorMessage.hidden = false;
+  } else { editorMessage.hidden = true; }
+}
+
+async function editorRequest(url, options = {}) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data.detail || 'Запрос редактора не выполнен';
+    const error = new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+    error.status = response.status; error.payload = data;
+    throw error;
+  }
+  return data;
+}
+
+async function loadEditorCampaigns() {
+  try {
+    const data = await editorRequest('/api/editor/campaigns');
+    const campaigns = data.campaigns || [];
+    editorCampaignSelect.innerHTML = '<option value="">Выбери кампанию</option>';
+    campaigns.forEach((campaign) => {
+      const option = document.createElement('option');
+      option.value = campaign.id; option.textContent = `${campaign.name || 'Без названия'} · #${campaign.id}`;
+      editorCampaignSelect.append(option);
+    });
+  } catch (error) {
+    editorCampaignSelect.innerHTML = '<option value="">Не удалось загрузить список</option>';
+    setEditorMessage(`Не удалось загрузить кампании: ${error.message}`);
+  }
+}
+
+function currentEditorCampaignId() {
+  return Number(editorCampaignId.value || editorCampaignSelect.value || 0);
+}
+
+function setEditorCampaign(campaign) {
+  state.editor.campaign = campaign;
+  editorCampaignId.value = campaign.id || '';
+  const option = [...editorCampaignSelect.options].find((item) => item.value === String(campaign.id));
+  if (option) editorCampaignSelect.value = String(campaign.id);
+  renderEditorStreams();
+}
+
+async function fetchEditorCampaign(discardPending = false) {
+  const campaignId = currentEditorCampaignId();
+  if (!campaignId) { setEditorMessage('Укажи ID кампании или выбери её из списка.'); return; }
+  editorFetchButton.disabled = true; setEditorMessage('');
+  try {
+    const data = await editorRequest(`/api/editor/campaigns/${campaignId}/fetch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discard_pending: discardPending }),
+    });
+    setEditorCampaign(data); setEditorMessage('Потоки синхронизированы. Локальные изменения Keitaro не затронуты.', 'success');
+  } catch (error) {
+    if (error.status === 409) {
+      setEditorMessage(error.message, 'error', { label: 'Сбросить черновик и повторить Fetch', handler: () => fetchEditorCampaign(true) });
+    } else setEditorMessage(error.message);
+  } finally { editorFetchButton.disabled = false; }
+}
+
+function replaceEditorStream(stream) {
+  if (!state.editor.campaign) return;
+  state.editor.campaign.streams = state.editor.campaign.streams.map((item) => item.id === stream.id ? stream : item);
+  renderEditorStreams();
+}
+
+function streamViewUrl(streamId) {
+  return `https://tlgk.host/admin/#/campaigns/${currentEditorCampaignId()}/streams/${streamId}`;
+}
+
+function renderEditorStreams() {
+  const campaign = state.editor.campaign;
+  if (!campaign) { streamsList.innerHTML = '<div class="empty-editor">Выбери кампанию и нажми Fetch Streams from KT.</div>'; return; }
+  if (!campaign.streams || !campaign.streams.length) { streamsList.innerHTML = '<div class="empty-editor">В кампании нет потоков.</div>'; return; }
+  streamsList.innerHTML = campaign.streams.map((stream) => {
+    const pending = stream.has_pending_changes;
+    const rows = stream.offers || [];
+    const hasOffers = rows.length > 0;
+    const offerRows = rows.map((offer) => {
+      const removed = offer.status === 'removed';
+      const pinned = offer.is_weight_pinned && !removed;
+      return `<tr class="offer-row${removed ? ' removed' : ''}">
+        <td class="offer-name">${escapeHtml(offer.name || `Оффер #${offer.offer_id}`)}<span class="offer-id">#${offer.offer_id}</span></td>
+        <td>${removed ? '<span class="removed-label">Removed · 0%</span>' : `<span class="share-badge">${offer.share}%</span>`}</td>
+        <td>—</td><td>—</td>
+        <td><div class="stream-actions">
+          ${removed ? `<button class="small-button primary-small" data-editor-action="bring-back" data-stream-id="${stream.id}" data-offer-id="${offer.offer_id}">Bring Back</button>` : `<button class="small-button" data-editor-action="remove" data-stream-id="${stream.id}" data-offer-id="${offer.offer_id}">Remove</button>`}
+          ${!removed ? `<button class="small-button pin-button" data-editor-action="pin" data-pinned="${pinned ? 'false' : 'true'}" data-stream-id="${stream.id}" data-offer-id="${offer.offer_id}">${pinned ? 'Unpin' : 'Pin Weight'}</button>` : ''}
+        </div></td>
+      </tr>`;
+    }).join('');
+    const addButton = hasOffers ? `<button class="small-button primary-small" data-editor-action="add" data-stream-id="${stream.id}">Add</button>` : '<span class="stream-meta">Поток без офферов не изменяется</span>';
+    return `<article class="stream-card${pending ? ' pending' : ''}">
+      <div class="stream-card-header"><div><div class="stream-title"><span class="status-dot ${pending ? '' : 'green'}"></span>${escapeHtml(stream.name)} <span class="stream-meta">#${stream.id}</span></div><div class="stream-status${pending ? ' pending' : ''}">${pending ? 'Есть неопубликованные изменения' : 'Опубликовано'}</div></div>
+        <div class="stream-actions"><a class="small-button" href="${streamViewUrl(stream.id)}" target="_blank" rel="noreferrer">View in KT</a>${addButton}<button class="small-button primary-small" data-editor-action="push" data-stream-id="${stream.id}" ${pending ? '' : 'disabled'}>Push to KT</button><button class="small-button" data-editor-action="cancel" data-stream-id="${stream.id}" ${pending ? '' : 'disabled'}>Cancel</button></div>
+      </div>
+      ${hasOffers ? `<div class="stream-table-wrap"><table class="stream-table"><thead><tr><th>Offer</th><th>Share</th><th>Stats</th><th>Trends</th><th>Actions</th></tr></thead><tbody>${offerRows}</tbody></table></div>` : '<div class="no-offers">Поток импортирован и будет сохранён без изменений. Фильтры и редирект не разбираются и не перезаписываются.</div>'}
+    </article>`;
+  }).join('');
+}
+
+async function editorAction(action, streamId, offerId, pinned) {
+  setEditorMessage('');
+  const routes = {
+    remove: `/api/editor/streams/${streamId}/offers/${offerId}/remove`,
+    'bring-back': `/api/editor/streams/${streamId}/offers/${offerId}/bring-back`,
+    pin: `/api/editor/streams/${streamId}/offers/${offerId}/pin`,
+    cancel: `/api/editor/streams/${streamId}/cancel`,
+    push: `/api/editor/streams/${streamId}/push`,
+  };
+  try {
+    let options = { method: 'POST' };
+    if (action === 'pin') { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify({ pinned }); }
+    const data = await editorRequest(routes[action], options);
+    replaceEditorStream(data.stream);
+    setEditorMessage(action === 'push' ? 'Изменения опубликованы в Keitaro.' : 'Локальный черновик обновлён.', 'success');
+  } catch (error) { setEditorMessage(error.message); }
+}
+
+async function addEditorOffer(streamId) {
+  const offer = state.editor.selectedOffer;
+  if (!offer) { setEditorMessage('Сначала найди и выбери оффер для добавления.'); return; }
+  try {
+    const data = await editorRequest(`/api/editor/streams/${streamId}/offers`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer_id: offer.id }),
+    });
+    replaceEditorStream(data.stream); setEditorMessage('Оффер добавлен только в локальный черновик.', 'success');
+  } catch (error) { setEditorMessage(error.message); }
+}
+
+streamsList.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-editor-action]'); if (!button) return;
+  const action = button.dataset.editorAction; const streamId = Number(button.dataset.streamId); const offerId = Number(button.dataset.offerId);
+  if (action === 'add') addEditorOffer(streamId); else editorAction(action, streamId, offerId, button.dataset.pinned === 'true');
+});
+editorFetchButton.addEventListener('click', () => fetchEditorCampaign(false));
+editorCampaignSelect.addEventListener('change', () => { editorCampaignId.value = editorCampaignSelect.value; });
+editorOfferSearch.addEventListener('input', async () => {
+  const query = editorOfferSearch.value.trim();
+  if (!query) { editorOfferSuggestions.hidden = true; return; }
+  try {
+    const data = await editorRequest(`/api/editor/offers?query=${encodeURIComponent(query)}`);
+    editorOfferSuggestions.innerHTML = (data.offers || []).map((offer) => `<div class="suggestion" data-offer-id="${offer.id}"><span class="suggestion-name">${escapeHtml(offer.name || 'Без названия')}</span><span class="suggestion-id">#${offer.id}</span></div>`).join('');
+    editorOfferSuggestions.hidden = !(data.offers || []).length;
+  } catch (error) { setEditorMessage(error.message); }
+});
+editorOfferSuggestions.addEventListener('click', (event) => {
+  const row = event.target.closest('[data-offer-id]'); if (!row) return;
+  const offerId = Number(row.dataset.offerId); const label = row.querySelector('.suggestion-name').textContent;
+  state.editor.selectedOffer = { id: offerId, name: label }; editorOfferSearch.value = `${label} · #${offerId}`; editorSelectedOffer.textContent = `Выбран: ${label} · #${offerId}`; editorOfferSuggestions.hidden = true;
+});
+document.addEventListener('click', (event) => { if (!event.target.closest('.editor-offer-search')) editorOfferSuggestions.hidden = true; });
+updatePreview(); loadLookups(); loadEditorCampaigns();

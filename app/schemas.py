@@ -12,7 +12,11 @@ class LookupItem(BaseModel):
 
 class CreateCampaignRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
-    geo_code: str = Field(min_length=2, max_length=8, description="ISO 3166-1 alpha-2 country code")
+    geo_code: str = Field(
+        min_length=2,
+        max_length=8,
+        description="ISO 3166-1 alpha-2 country code",
+    )
     offer_id: int = Field(gt=0)
     domain_id: int | None = Field(default=None, gt=0)
     group_id: int | None = Field(default=None, gt=0)
@@ -39,3 +43,15 @@ class LookupResponse(BaseModel):
     domains: list[dict[str, Any]]
     groups: list[dict[str, Any]]
     traffic_sources: list[dict[str, Any]]
+
+
+class FetchStreamsRequest(BaseModel):
+    discard_pending: bool = False
+
+
+class AddOfferRequest(BaseModel):
+    offer_id: int = Field(gt=0)
+
+
+class PinOfferRequest(BaseModel):
+    pinned: bool

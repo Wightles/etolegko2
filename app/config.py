@@ -17,7 +17,9 @@ class Settings(BaseSettings):
 
     keitaro_base_url: str = Field("https://tlgk.host", validation_alias="KEITARO_BASE_URL")
     keitaro_api_key: str = Field("", validation_alias="KEITARO_API_KEY")
-    keitaro_default_domain_id: OptionalInt = Field(None, validation_alias="KEITARO_DEFAULT_DOMAIN_ID")
+    keitaro_default_domain_id: OptionalInt = Field(
+        None, validation_alias="KEITARO_DEFAULT_DOMAIN_ID"
+    )
     keitaro_default_group_id: OptionalInt = Field(None, validation_alias="KEITARO_DEFAULT_GROUP_ID")
     keitaro_default_traffic_source_id: OptionalInt = Field(
         None, validation_alias="KEITARO_DEFAULT_TRAFFIC_SOURCE_ID"
